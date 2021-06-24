@@ -1,40 +1,52 @@
-import { assert } from "console";
+import fetchMock from 'fetch-mock'
+import { apiMiddleware, ApiError } from 'redux-api-middleware';
+import configureMockStore from 'redux-mock-store'
+import * as productActions from '../src/redux/actions/productActions'
+import { ActionTypes } from '../src/redux/contants/action-types';
+import reducers from '../src/redux/reducers';
+import  * as fromBooks from '../src/redux/reducers/productReducer'
 
-const webdriver = require('selenium-webdriver');
-const {until} = require('selenium-webdriver');
-const {by} = require('selenium-webdriver');
-const {browser} = require('selenium-webdriver');
+const createStore = configureMockStore([apiMiddleware])
+const store = createStore(reducers)
 
- 
- const script = require('jest');
-  
- const url = 'localhost:3000'
-  
- const getElementXpath = async (driver, xpath, timeout = 3000) => {
-   const el = await driver.wait(until.elementLocated(by.xpath(xpath)), timeout);
-   return await driver.wait(until.elementIsVisible(el), timeout);
- };
-  
-  
- const getElementName = async (driver, name, timeout = 3000) => {
-   const el = await driver.wait(until.elementLocated(by.name(name)), timeout);
-   return await driver.wait(until.elementIsVisible(el), timeout);
- };
-  
- const getElementId = async (driver, id, timeout = 3000) => {
-   const el = await driver.wait(until.elementLocated(by.id(id)), timeout);
-   return await driver.wait(until.elementIsVisible(el), timeout);
- };
-  
- // declaring the test group  This is our test case scenario that we will execute from our first test script. 
+describe('test data flow', () => {
 
- describe("tests",()=>{
-    test('it performs a validation of title on the home page', async () => {
-        await browser.get(url)
-        const title = await browser.findElement(by.tagName('h1')).getText()
-        expect(title).toContain('SeleniumHQ Browser Automation')
-      })
- })
-  
- 
-  
+    afterEach(() => {
+        fetchMock.reset()
+        fetchMock.restore()
+    })
+
+    it('Dispatches BOOKS_SUCCESS after fetching books', () => {
+        // Response body sample
+        const response = [
+            {
+              "id":1,
+              "title":"Fjallraven - Foldsack No. 1 Backpack, Fits 15 Laptops",
+              "price":109.95,
+              "description":"Your perfect pack for everyday use and walks in the forest. Stash your laptop (up to 15 inches) in the padded sleeve, your everyday",
+              "category":"men's clothing",
+              "image":"https://fakestoreapi.com/img/81fPKd-2AYL._AC_SL1500_.jpg"
+            },
+            {
+              "id":2,
+              "title":"Mens Casual Premium Slim Fit T-Shirts ",
+              "price":22.3,
+              "description":"Slim-fitting style, contrast raglan long sleeve, three-button henley placket, light weight & soft fabric for breathable and comfortable wearing. And Solid stitched shirts with round neck made for durability and a great fit for casual fashion wear and diehard baseball fans. The Henley style round neckline includes a three-button placket.",
+              "category":"men's clothing",
+              "image":"https://fakestoreapi.com/img/71-3HjGNDUL._AC_SY879._SX._UX._SY._UY_.jpg"
+            }
+        ]
+
+        fetchMock.getOnce('/products',
+                { body: { results: response }})
+
+        const expectedActions = [
+         { type: ActionTypes.FETCH_PRODUCTS, payload: undefined},
+         { type: ActionTypes.SET_PRODUCTS, payload: { results: response}}
+        ]
+        store.dispatch(productActions.fetchProducts())
+             .then(() => {
+                 expect(store.getActions()).toEqual(expectedActions)
+             })
+    })
+})
